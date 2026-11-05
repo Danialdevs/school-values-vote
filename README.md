@@ -33,7 +33,14 @@
 - `supabase/migrations/` — схема базы. Таблицы закрыты (RLS), браузер вызывает только функции:
   `sv_public` (состояние), `sv_vote` (голос: ровно 5 из списка, один телефон — один голос),
   `sv_me`, `sv_admin` (по PIN; блокировка после 30 неверных попыток за 10 минут).
-- `.github/workflows/keepalive.yml` — раз в 3 дня обращается к базе, чтобы бесплатный Supabase не уснул.
+- Бесплатный Supabase засыпает после 7 дней без запросов. Защита от этого:
+  - на Mac организатора стоит агент `~/Library/LaunchAgents/kz.danialdevs.school-values-keepalive.plist`
+    (раз в 12 часов один запрос к базе);
+  - `.github/workflows/keepalive.yml` — то же самое через GitHub Actions (заработает, когда на аккаунте
+    будет снята блокировка Actions из-за оплаты);
+  - можно добавить любой бесплатный монитор (UptimeRobot, cron-job.org) на адрес
+    `https://luhdhpillsgxtdzialkt.supabase.co/rest/v1/rpc/sv_public?apikey=<ключ из docs/assets/config.js>`.
+  - Если база всё же уснула: supabase.com → проект `school-values-vote` → **Restore** (пара минут).
 - Ключ в `docs/assets/config.js` — публичный (publishable), так и задумано.
 
 Изменить ценности/названия: поле `config` в таблице `sv_config` (Supabase → Table Editor) и строки `sv_count`.
