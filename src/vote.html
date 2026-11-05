@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1133">
+<title>Голосование</title>
+<!--BOOT-->
+<style>
+  :root { --c: 43,123,255; --a: 94,231,255; --gold: 255,204,64; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    min-height: 100vh; color: #eef3ff; background: #0b1133;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .bg { position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: -1;
+    background: radial-gradient(80% 45% at 50% 0%, rgba(var(--c), .55), transparent 75%), linear-gradient(180deg, #0b1133, #070b20); }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 18px 16px 120px; }
+  .badge { display: inline-flex; align-items: center; background: rgb(var(--c)); border-radius: 14px; padding: 5px 14px 5px 5px;
+    font-weight: 900; font-size: 15px; letter-spacing: .04em; text-transform: uppercase; box-shadow: 0 4px 18px rgba(var(--c), .5); }
+  .badge i { font-style: normal; width: 30px; height: 30px; border-radius: 9px; background: #fff; color: rgb(var(--c));
+    display: inline-flex; align-items: center; justify-content: center; font-size: 19px; margin-right: 9px; }
+  h1 { font-size: 26px; line-height: 1.15; font-weight: 900; margin: 14px 0 6px; }
+  .q { font-size: 16px; line-height: 1.35; opacity: .85; }
+  .counter { position: sticky; top: 0; z-index: 3; margin: 14px -16px 10px; padding: 10px 16px;
+    background: rgba(11,17,51,.92); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,.08); }
+  .counter .txt { font-size: 16px; font-weight: 700; }
+  .counter .txt b { font-size: 20px; color: rgb(var(--a)); }
+  .dots { display: flex; }
+  .dots span { width: 16px; height: 16px; border-radius: 50%; margin-left: 6px; border: 2px solid rgba(255,255,255,.35); transition: .2s; }
+  .dots span.on { background: rgb(var(--gold)); border-color: rgb(var(--gold)); box-shadow: 0 0 10px rgba(var(--gold), .7); }
+  .counter.shake { animation: shake .45s; }
+  .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-gap: 12px 10px; padding-top: 6px; }
+  .opt { position: relative; display: flex; align-items: center; justify-content: center; text-align: center; min-height: 64px; padding: 10px 8px;
+    border-radius: 16px; border: 2px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #eef3ff;
+    font: inherit; font-size: 16px; font-weight: 800; line-height: 1.2; cursor: pointer; min-width: 0;
+    overflow-wrap: anywhere; -webkit-hyphens: auto; hyphens: auto; transition: background .15s, border-color .15s, transform .1s; }
+  .opt:active { transform: scale(.97); }
+  .opt .ck { position: absolute; top: -8px; right: -6px; width: 26px; height: 26px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 900;
+    background: rgb(var(--gold)); color: #1f1600; box-shadow: 0 2px 8px rgba(0,0,0,.35);
+    transform: scale(0); transition: transform .18s cubic-bezier(.2,.9,.3,1.5); }
+  .opt.on { background: rgb(var(--c)); border-color: rgb(var(--a)); box-shadow: 0 4px 16px rgba(var(--c), .45); }
+  .opt.on .ck { transform: scale(1); }
+  .opt.full:not(.on) { opacity: .45; }
+  .bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 4; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+    background: linear-gradient(180deg, rgba(7,11,32,0), rgba(7,11,32,.95) 35%); }
+  .send { display: block; width: 100%; max-width: 528px; margin: 0 auto; border: 0; border-radius: 18px; padding: 18px;
+    font: inherit; font-size: 19px; font-weight: 900; color: #1f1600; background: rgb(var(--gold)); cursor: pointer;
+    box-shadow: 0 6px 22px rgba(var(--gold), .45); transition: .2s; }
+  .send:disabled { background: rgba(255,255,255,.14); color: rgba(255,255,255,.6); box-shadow: none; }
+  .panel { display: none; text-align: center; padding: 40px 10px 20px; }
+  .panel .big { font-size: 74px; line-height: 1; }
+  .panel h2 { font-size: 28px; font-weight: 900; margin: 16px 0 8px; }
+  .panel p { font-size: 17px; opacity: .85; line-height: 1.4; }
+  .chosen { list-style: none; margin: 22px auto 0; max-width: 360px; text-align: left; }
+  .chosen li { background: rgba(255,255,255,.08); border-left: 5px solid rgb(var(--gold)); border-radius: 12px; padding: 12px 14px; margin: 8px 0; font-size: 17px; font-weight: 800; }
+  body.st-done .form, body.st-msg .form, body.st-load .form { display: none; }
+  body.st-done #done, body.st-msg #msg, body.st-load #load { display: block; }
+  .toast { position: fixed; left: 50%; bottom: 96px; transform: translateX(-50%) translateY(20px); z-index: 9; opacity: 0; pointer-events: none;
+    background: #fff; color: #0b1133; padding: 12px 18px; border-radius: 14px; font-weight: 800; font-size: 15px; width: max-content; max-width: 90vw;
+    text-align: center; box-shadow: 0 8px 30px rgba(0,0,0,.4); transition: .25s; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .pop { animation: pop .5s cubic-bezier(.2,.9,.3,1.4); }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 20%,60% { transform: translateX(-8px); } 40%,80% { transform: translateX(8px); } }
+  @keyframes pop { 0% { transform: scale(.3); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+  @media (max-width: 350px) { .grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body class="st-load">
+<div class="bg"></div>
+<div class="wrap">
+  <div class="badge"><i id="letter"></i><span id="tname"></span></div>
+  <h1 id="title"></h1>
+
+  <div class="form">
+    <p class="q" id="question"></p>
+    <div class="counter" id="counter">
+      <div class="txt">Выбрано <b id="n">0</b> из <span id="max">5</span></div>
+      <div class="dots" id="dots"></div>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="bottom"><button class="send" id="send" disabled>Выбери 5 ценностей</button></div>
+  </div>
+
+  <div class="panel" id="load"><p>Загрузка…</p></div>
+
+  <div class="panel" id="done">
+    <div class="big pop">🎉</div>
+    <h2 id="doneTitle">Спасибо! Голос принят</h2>
+    <p id="doneText">Посмотри на экран — твои голоса уже там!</p>
+    <ul class="chosen" id="chosen"></ul>
+  </div>
+
+  <div class="panel" id="msg">
+    <div class="big" id="msgIcon">⏳</div>
+    <h2 id="msgTitle"></h2>
+    <p id="msgText"></p>
+    <button class="send" id="retry" style="display:none;margin-top:22px;width:auto;padding:14px 28px">Обновить</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script src="{{ROOT}}assets/config.js"></script>
+<script src="{{ROOT}}assets/api.js"></script>
+<script>
+(function () {
+  'use strict';
+  var T = (window.BOOT && window.BOOT.team) || 'A';
+  var $ = function (id) { return document.getElementById(id); };
+  var sel = [], sending = false, P = 5, btns = [];
+
+  function rgb(hex) { var n = parseInt(String(hex).replace('#', ''), 16); return ((n >> 16) & 255) + ',' + ((n >> 8) & 255) + ',' + (n & 255); }
+
+  // идентификатор телефона (чтобы один телефон = один голос)
+  var DID = '';
+  try { DID = localStorage.getItem('sv_device') || ''; } catch (e) {}
+  if (!/^[\w-]{8,80}$/.test(DID)) {
+    var a = new Uint8Array(12);
+    if (window.crypto && crypto.getRandomValues) crypto.getRandomValues(a); else for (var i = 0; i < 12; i++) a[i] = Math.random() * 256;
+    DID = Array.prototype.map.call(a, function (x) { return ('0' + x.toString(16)).slice(-2); }).join('');
+    try { localStorage.setItem('sv_device', DID); } catch (e) {}
+  }
+
+  function setup(cfg) {
+    var info = cfg.teams[T];
+    P = cfg.picks;
+    document.documentElement.style.setProperty('--c', rgb(info.color));
+    document.documentElement.style.setProperty('--a', rgb(info.accent));
+    document.title = info.name + ' — голосование';
+    $('letter').textContent = info.letter;
+    $('tname').textContent = info.name;
+    $('title').textContent = cfg.title;
+    $('question').textContent = cfg.question;
+    $('max').textContent = P;
+    $('dots').innerHTML = ''; $('grid').innerHTML = '';
+    for (var d = 0; d < P; d++) $('dots').appendChild(document.createElement('span'));
+    btns = cfg.values.map(function (v) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'opt';
+      b.innerHTML = '<span class="ck">✓</span><span></span>';
+      b.lastChild.textContent = v;
+      b.addEventListener('click', function () { toggle(v); });
+      $('grid').appendChild(b);
+      return b;
+    });
+    update();
+  }
+
+  function toggle(v) {
+    var i = sel.indexOf(v);
+    if (i >= 0) sel.splice(i, 1);
+    else if (sel.length >= P) {
+      var c = $('counter'); c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake');
+      toast('Можно выбрать только ' + P + '. Сними одну галочку, чтобы выбрать другую');
+      return;
+    } else sel.push(v);
+    if (navigator.vibrate) try { navigator.vibrate(12); } catch (e) {}
+    update();
+  }
+  function update() {
+    var full = sel.length >= P;
+    btns.forEach(function (b) {
+      var on = sel.indexOf(b.lastChild.textContent) >= 0;
+      b.classList.toggle('on', on);
+      b.classList.toggle('full', full);
+    });
+    $('n').textContent = sel.length;
+    Array.prototype.forEach.call($('dots').children, function (s, i) { s.classList.toggle('on', i < sel.length); });
+    var left = P - sel.length, btn = $('send');
+    btn.disabled = left !== 0 || sending;
+    btn.textContent = sending ? 'Отправляю…' : left === 0 ? 'Отправить голос ✓' : left === P ? 'Выбери ' + P + ' ценностей' : 'Выбери ещё ' + left;
+  }
+  function toast(t) {
+    var el = $('toast'); el.textContent = t; el.classList.add('show');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { el.classList.remove('show'); }, 2600);
+  }
+  function show(st) {
+    document.body.className = 'st-' + st; window.scrollTo(0, 0);
+    if (st !== 'form') $('toast').classList.remove('show');
+  }
+  function showDone(choices, already, team) {
+    var ul = $('chosen'); ul.innerHTML = '';
+    (choices || []).forEach(function (v) { var li = document.createElement('li'); li.textContent = v; ul.appendChild(li); });
+    if (already) {
+      $('doneTitle').textContent = 'Ты уже проголосовал(а)';
+      $('doneText').textContent = 'С этого телефона голос уже принят' + (team && team !== T ? ' (за другую территорию)' : '') + '. Спасибо!';
+      document.querySelector('#done .big').textContent = '✅';
+    }
+    show('done');
+  }
+  function showMsg(icon, title, text, retry) {
+    $('msgIcon').textContent = icon; $('msgTitle').textContent = title; $('msgText').textContent = text;
+    $('retry').style.display = retry ? 'inline-block' : 'none';
+    show('msg');
+  }
+
+  $('send').addEventListener('click', function () {
+    if (sel.length !== P || sending) return;
+    sending = true; update();
+    API.vote(T, sel, DID)
+      .then(function (j) {
+        sending = false;
+        if (j.ok) { showDone(sel, false); if (navigator.vibrate) try { navigator.vibrate([30, 60, 30]); } catch (e) {} return; }
+        if (j.error === 'already') return showDone(j.voted && j.voted.c, true, j.voted && j.voted.team);
+        if (j.error === 'closed') return showMsg('🏁', 'Голосование завершено', 'Смотри итоги на экране!');
+        toast(j.message || 'Ошибка. Попробуй ещё раз'); update();
+      })
+      .catch(function () { sending = false; update(); toast('Нет связи. Проверь интернет и нажми ещё раз'); });
+  });
+  $('retry').addEventListener('click', function () { location.reload(); });
+
+  API.me(DID)
+    .then(function (me) {
+      if (!me || !me.config || !me.config.teams[T]) return showMsg('🤔', 'Нет такой территории', 'Отсканируй QR-код ещё раз');
+      setup(me.config);
+      if (me.voted) return showDone(me.voted.c, true, me.voted.team);
+      if (me.modes && me.modes[T] !== 'voting') return showMsg('🏁', 'Голосование завершено', 'Смотри итоги на экране!');
+      show('form');
+    })
+    .catch(function () { showMsg('📶', 'Нет связи', 'Проверь интернет и попробуй ещё раз', true); });
+})();
+</script>
+</body>
+</html>

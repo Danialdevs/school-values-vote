@@ -1,0 +1,434 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Экран голосования</title>
+<script>window.BOOT={"team":"B"};</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🗳%3C/text%3E%3C/svg%3E">
+<style>
+  :root { --c: 43,123,255; --a: 94,231,255; --gold: 255,204,64; --rh: 40px; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body {
+    background: #060a1c; color: #eef3ff;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; cursor: default;
+  }
+  .bg {
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 0;
+    background:
+      radial-gradient(55% 65% at 0% 0%, rgba(var(--c), .38), transparent 70%),
+      radial-gradient(45% 55% at 100% 100%, rgba(var(--a), .16), transparent 70%),
+      linear-gradient(160deg, #070b20, #0b1133 55%, #060918);
+  }
+  #app { position: relative; z-index: 1; height: 100%; display: flex; flex-direction: column; padding: 1.5rem 2rem 1.2rem; }
+
+  /* ── шапка ── */
+  header { display: flex; align-items: center; }
+  .badge {
+    display: flex; align-items: center; flex: none; cursor: pointer;
+    background: rgb(var(--c)); border-radius: 1.3rem; padding: .55rem 1.5rem .55rem .55rem;
+    box-shadow: 0 0 2.4rem rgba(var(--c), .65);
+  }
+  .badge .letter {
+    width: 3.5rem; height: 3.5rem; border-radius: .95rem; background: #fff; color: rgb(var(--c));
+    font-weight: 900; font-size: 2.5rem; display: flex; align-items: center; justify-content: center; margin-right: 1rem;
+  }
+  .badge .tname { font-size: 1.85rem; font-weight: 900; letter-spacing: .03em; text-transform: uppercase; white-space: nowrap; }
+  .titles { flex: 1; min-width: 0; margin: 0 2rem; }
+  h1 { font-size: 2.6rem; font-weight: 900; line-height: 1.05; }
+  .sub { font-size: 1.3rem; opacity: .72; margin-top: .3rem; }
+  .total { text-align: right; flex: none; }
+  .total .num {
+    font-size: 4.4rem; font-weight: 900; line-height: .95; color: rgb(var(--a));
+    font-variant-numeric: tabular-nums; text-shadow: 0 0 2rem rgba(var(--a), .55); display: inline-block;
+  }
+  .total .num.bump { animation: bump .5s ease; }
+  .total .lbl { font-size: 1.05rem; opacity: .7; text-transform: uppercase; letter-spacing: .12em; }
+
+  /* ── голосование ── */
+  main { flex: 1; display: flex; margin-top: 1.4rem; min-height: 0; }
+  .qrbox { width: 30%; display: flex; flex-direction: column; align-items: center; justify-content: center; margin-right: 2.2rem; flex: none; }
+  .qrcard {
+    background: #fff; border-radius: 1.6rem; padding: 1rem; width: 100%; max-width: 27rem;
+    box-shadow: 0 0 0 .45rem rgb(var(--c)), 0 0 3.5rem rgba(var(--c), .7);
+    animation: glow 2.6s ease-in-out infinite;
+  }
+  .qrcard img { display: block; width: 100%; height: auto; }
+  .scan { font-size: 2rem; font-weight: 900; text-align: center; margin-top: 1.5rem; line-height: 1.15; }
+  .steps { list-style: none; margin-top: 1rem; font-size: 1.2rem; }
+  .steps li { display: flex; align-items: center; margin: .4rem 0; opacity: .9; }
+  .steps b {
+    width: 1.8rem; height: 1.8rem; border-radius: 50%; background: rgb(var(--c)); font-size: 1rem;
+    display: inline-flex; align-items: center; justify-content: center; margin-right: .7rem; flex: none;
+  }
+  .url { margin-top: .8rem; font-size: .9rem; opacity: .45; word-break: break-all; text-align: center; }
+
+  .chart { flex: 1; position: relative; min-width: 0; }
+  .row {
+    position: absolute; left: 0; right: 0; top: 0; height: var(--rh);
+    display: flex; align-items: center; will-change: transform;
+    transition: transform .8s cubic-bezier(.2,.85,.25,1);
+  }
+  .noanim .row, .noanim .bar { transition: none !important; }
+  .rk {
+    width: calc(var(--rh) * .7); height: calc(var(--rh) * .7); border-radius: 50%; flex: none;
+    display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: calc(var(--rh) * .34);
+    background: rgba(255,255,255,.08); color: rgba(255,255,255,.55); transition: background .4s, color .4s;
+  }
+  .nm {
+    width: calc(var(--rh) * 5.6); flex: none; padding: 0 .9rem; font-size: calc(var(--rh) * .42); font-weight: 800;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: rgba(255,255,255,.72); transition: color .4s;
+  }
+  .tr { flex: 1; height: 70%; display: flex; align-items: center; position: relative; border-radius: .7rem; }
+  .tr:before { content: ""; position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: rgba(255,255,255,.035); border-radius: .7rem; }
+  .bar {
+    position: relative; height: 100%; min-width: .7rem; width: 0; border-radius: .7rem; flex: none;
+    background: linear-gradient(90deg, rgba(var(--c), .45), rgba(var(--c), .85));
+    transition: width .8s cubic-bezier(.2,.85,.25,1), background .4s;
+  }
+  .cw { position: relative; margin-left: .8rem; flex: none; }
+  .ct { font-size: calc(var(--rh) * .52); font-weight: 900; font-variant-numeric: tabular-nums; }
+  .pl {
+    position: absolute; left: 100%; top: 50%; margin-left: .5rem; white-space: nowrap; pointer-events: none;
+    font-size: calc(var(--rh) * .4); font-weight: 900; color: rgb(var(--gold)); opacity: 0;
+    text-shadow: 0 0 1rem rgba(var(--gold), .7);
+  }
+  .pl.go { animation: plus 1.4s ease-out forwards; }
+  .row.top .rk { background: rgb(var(--gold)); color: #2a1d00; }
+  .row.top .nm { color: #fff; }
+  .row.top .bar { background: linear-gradient(90deg, rgb(var(--c)), rgb(var(--a))); box-shadow: 0 0 1.4rem rgba(var(--a), .35); }
+  .row.flash .tr:before { animation: flash .9s ease-out; }
+  .row.flash .bar:after {
+    content: ""; position: absolute; top: 0; bottom: 0; left: 0; right: 0; border-radius: inherit;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,.65), transparent);
+    background-size: 40% 100%; background-repeat: no-repeat; background-position: -100% 0;
+    animation: shine .9s ease-out forwards;
+  }
+  .cut {
+    position: absolute; left: 0; right: 0; height: 0; border-top: .15rem dashed rgba(var(--gold), .55);
+    transition: top .5s;
+  }
+  .cut span {
+    position: absolute; right: 0; top: -.85rem; font-size: .95rem; font-weight: 900; letter-spacing: .12em;
+    color: #2a1d00; background: rgb(var(--gold)); padding: .15rem .6rem; border-radius: .5rem;
+  }
+
+  /* ── итоги ── */
+  .results { display: none; flex: 1; flex-direction: column; align-items: center; justify-content: center; min-height: 0; padding: 0 3rem; }
+  body.mode-results .results { display: flex; }
+  body.mode-results main { display: none; }
+  .rlabel { font-size: 1.25rem; letter-spacing: .35em; text-transform: uppercase; color: rgb(var(--a)); font-weight: 900; }
+  .rtitle { font-size: 3.4rem; font-weight: 900; line-height: 1.1; margin-top: .2rem; }
+  .rsub { font-size: 1.35rem; opacity: .75; margin: .3rem 0 1.2rem; }
+  .cards { width: 100%; max-width: 92rem; }
+  .card {
+    display: grid; grid-template-columns: 4.6rem 1fr 30% 8.5rem; align-items: center;
+    background: rgba(255,255,255,.06); border: .12rem solid rgba(255,255,255,.09); border-radius: 1.3rem;
+    padding: .55rem 1.3rem; margin: .55rem 0;
+    transition: opacity .7s, transform .7s cubic-bezier(.2,.9,.25,1.15);
+  }
+  .card.pre { opacity: 0; transform: translateX(-5rem) scale(.95); }
+  .card.first { background: linear-gradient(90deg, rgba(var(--c), .6), rgba(var(--c), .12)); border-color: rgba(var(--a), .75); box-shadow: 0 0 3rem rgba(var(--c), .5); }
+  .medal {
+    width: 3.4rem; height: 3.4rem; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-weight: 900; font-size: 1.8rem; background: rgba(255,255,255,.2); color: #fff;
+  }
+  .card:nth-child(1) .medal { background: rgb(var(--gold)); color: #2a1d00; box-shadow: 0 0 1.5rem rgba(var(--gold), .7); }
+  .card:nth-child(2) .medal { background: #dfe6f0; color: #26303f; }
+  .card:nth-child(3) .medal { background: #e09a5a; color: #3a1f06; }
+  .cname { font-size: 2.5rem; font-weight: 900; padding: 0 1.2rem; line-height: 1.1; }
+  .card.first .cname { font-size: 3rem; }
+  .cbar { height: 1.3rem; background: rgba(255,255,255,.1); border-radius: 1rem; overflow: hidden; }
+  .cfill { height: 100%; width: 0; border-radius: 1rem; background: linear-gradient(90deg, rgb(var(--c)), rgb(var(--a))); transition: width 1.3s cubic-bezier(.2,.8,.2,1); }
+  .cval { text-align: right; line-height: 1; }
+  .cval b { font-size: 2.6rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .cval span { display: block; font-size: 1rem; opacity: .7; margin-top: .25rem; }
+  .formula {
+    margin-top: 1.2rem; display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+    font-size: 1.55rem; font-weight: 900; opacity: 0; transform: translateY(1rem); transition: opacity .9s, transform .9s;
+    max-width: 92rem;
+  }
+  .formula.in { opacity: 1; transform: none; }
+  .fchip { background: #fff; color: #0b1133; border-radius: .8rem; padding: .3rem .9rem; margin: .3rem; }
+  .op { color: rgb(var(--a)); font-size: 2rem; margin: 0 .25rem; }
+  .fres { color: rgb(var(--gold)); margin-left: .4rem; }
+  .tie { font-size: 1.05rem; opacity: .6; margin-top: .6rem; text-align: center; }
+  .empty { font-size: 2.2rem; opacity: .7; margin-top: 2rem; }
+
+  /* ── служебное ── */
+  #confetti { position: fixed; left: 0; top: 0; width: 100%; height: 100%; pointer-events: none; z-index: 5; display: none; }
+  .fsbtn {
+    position: fixed; right: .8rem; bottom: .8rem; z-index: 6; width: 2.8rem; height: 2.8rem; border-radius: .8rem;
+    border: 0; background: rgba(255,255,255,.08); color: rgba(255,255,255,.5); font-size: 1.5rem; cursor: pointer;
+  }
+  .conn {
+    position: fixed; left: 50%; bottom: .8rem; transform: translateX(-50%); z-index: 6; display: none;
+    background: #c62828; color: #fff; padding: .4rem 1rem; border-radius: 2rem; font-size: 1rem; font-weight: 700;
+  }
+  body.offline .conn { display: block; }
+  .hint {
+    position: fixed; left: 50%; top: 45%; transform: translate(-50%, -50%); z-index: 7; pointer-events: none;
+    background: rgba(0,0,0,.8); padding: 1rem 2rem; border-radius: 1rem; font-size: 1.5rem; font-weight: 800;
+    opacity: 0; transition: opacity .3s;
+  }
+  .hint.show { opacity: 1; }
+
+  @keyframes glow { 0%,100% { box-shadow: 0 0 0 .45rem rgb(var(--c)), 0 0 2.5rem rgba(var(--c), .5); } 50% { box-shadow: 0 0 0 .45rem rgb(var(--c)), 0 0 4.5rem rgba(var(--c), .95); } }
+  @keyframes plus { 0% { opacity: 0; transform: translateY(-50%) scale(.6); } 15% { opacity: 1; transform: translateY(-60%) scale(1.25); } 100% { opacity: 0; transform: translateY(-190%) scale(1); } }
+  @keyframes flash { 0% { background: rgba(var(--a), .3); } 100% { background: rgba(255,255,255,.035); } }
+  @keyframes shine { 0% { background-position: -100% 0; } 100% { background-position: 250% 0; } }
+  @keyframes bump { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
+
+  @media (orientation: portrait) {
+    main { flex-direction: column; }
+    .qrbox { width: 100%; flex-direction: row; margin: 0 0 1.6rem; justify-content: flex-start; }
+    .qrcard { width: 22rem; flex: none; }
+    .qrtext { margin-left: 2rem; }
+    .scan { text-align: left; margin-top: 0; }
+    .url { text-align: left; }
+    .card { grid-template-columns: 4.2rem 1fr 7.5rem; }
+    .cbar { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div id="app">
+  <header>
+    <div class="badge" id="badge" title="Удерживайте 1,5 сек — переключить голосование / итоги">
+      <div class="letter" id="letter"></div><div class="tname" id="tname"></div>
+    </div>
+    <div class="titles"><h1 id="title"></h1><div class="sub" id="sub"></div></div>
+    <div class="total"><div class="num" id="total">0</div><div class="lbl" id="totalLbl">участников</div></div>
+  </header>
+
+  <main id="voting">
+    <aside class="qrbox">
+      <div class="qrcard"><img id="qr" width="400" height="400" alt="QR-код для голосования"></div>
+      <div class="qrtext">
+        <div class="scan">Наведи камеру —<br>и голосуй!</div>
+        <ol class="steps">
+          <li><b>1</b><span>Сканируй QR-код</span></li>
+          <li><b>2</b><span id="pickTxt">Отметь 5 ценностей</span></li>
+          <li><b>3</b><span>Нажми «Отправить»</span></li>
+        </ol>
+        <div class="url" id="url"></div>
+      </div>
+    </aside>
+    <section class="chart noanim" id="chart"></section>
+  </main>
+
+  <section class="results" id="results">
+    <div class="rlabel">Итоги голосования</div>
+    <div class="rtitle">Формула школы</div>
+    <div class="rsub" id="rsub"></div>
+    <div class="cards" id="cards"></div>
+    <div class="formula" id="formula"></div>
+    <div class="tie" id="tie"></div>
+  </section>
+</div>
+<canvas id="confetti"></canvas>
+<button class="fsbtn" id="fsbtn" title="Во весь экран (F)">⛶</button>
+<div class="conn">Нет связи с сервером…</div>
+<div class="hint" id="hint"></div>
+
+<script src="../../assets/qrcode.js"></script>
+<script src="../../assets/config.js"></script>
+<script src="../../assets/api.js"></script>
+<script src="../../assets/live.js"></script>
+<script>
+(function () {
+  'use strict';
+  var T = (window.BOOT && window.BOOT.team) || 'A';
+  var $ = function (id) { return document.getElementById(id); };
+  var chart = $('chart'), rows = {}, cut = null, N = 15, PICKS = 5, rh = 40, built = false;
+  var last = null, serverMode = null, localMode = null, shownMode = null, qrUrl = '', revealTok = 0;
+
+  function build(s, t) {
+    document.title = t.name + ' — ' + s.title;
+    var st = document.documentElement.style;
+    st.setProperty('--c', SV.rgb(t.color));
+    st.setProperty('--a', SV.rgb(t.accent));
+    $('letter').textContent = t.letter;
+    $('tname').textContent = t.name;
+    $('title').textContent = s.title;
+    $('sub').textContent = s.question;
+    $('pickTxt').textContent = 'Отметь ' + s.picks + ' ' + SV.plural(s.picks, 'ценность', 'ценности', 'ценностей');
+    N = s.values.length; PICKS = s.picks;
+    s.values.forEach(function (v, i) {
+      var el = document.createElement('div');
+      el.className = 'row';
+      el.innerHTML = '<div class="rk"></div><div class="nm"></div><div class="tr"><div class="bar"></div>' +
+        '<div class="cw"><span class="ct">0</span><span class="pl"></span></div></div>';
+      el.querySelector('.nm').textContent = v;
+      chart.appendChild(el);
+      rows[v] = { el: el, rk: el.querySelector('.rk'), bar: el.querySelector('.bar'), ct: el.querySelector('.ct'),
+        pl: el.querySelector('.pl'), val: null, pos: i };
+    });
+    cut = document.createElement('div');
+    cut.className = 'cut';
+    cut.innerHTML = '<span>ТОП-' + PICKS + '</span>';
+    chart.appendChild(cut);
+    built = true;
+    layout();
+    setTimeout(function () { chart.classList.remove('noanim'); }, 400);
+  }
+
+  function layout() {
+    if (!built || !chart.clientHeight) return;
+    rh = chart.clientHeight / N;
+    chart.style.setProperty('--rh', rh + 'px');
+    Object.keys(rows).forEach(function (k) { rows[k].el.style.transform = 'translateY(' + (rows[k].pos * rh) + 'px)'; });
+    cut.style.top = (PICKS * rh) + 'px';
+  }
+
+  function bump(row, d) {
+    row.pl.textContent = '+' + d;
+    row.pl.classList.remove('go'); void row.pl.offsetWidth; row.pl.classList.add('go');
+    row.el.classList.remove('flash'); void row.el.offsetWidth; row.el.classList.add('flash');
+    clearTimeout(row.ft);
+    row.ft = setTimeout(function () { row.el.classList.remove('flash'); }, 1000);
+  }
+
+  function render(s) {
+    var t = s.teams[T];
+    if (!t) return;
+    if (!built) build(s, t);
+    last = s;
+    var ranked = SV.ranked(s.values, t.counts), max = ranked.length ? ranked[0].count : 0;
+    ranked.forEach(function (it, i) {
+      var row = rows[it.name];
+      if (!row) return;
+      row.pos = i;
+      row.el.style.transform = 'translateY(' + (i * rh) + 'px)';
+      row.rk.textContent = i + 1;
+      row.el.classList.toggle('top', i < PICKS && it.count > 0);
+      row.bar.style.width = max ? 'calc((100% - 6.5rem) * ' + (it.count / max).toFixed(4) + ')' : '0px';
+      if (row.val != null && it.count > row.val) bump(row, it.count - row.val);
+      row.val = it.count;
+      SV.countTo(row.ct, it.count, 900);
+    });
+    var tot = $('total');
+    if (tot._v != null && t.voters > tot._v) { tot.classList.remove('bump'); void tot.offsetWidth; tot.classList.add('bump'); }
+    SV.countTo(tot, t.voters, 900, function (n) {
+      $('totalLbl').textContent = SV.plural(n, 'участник', 'участника', 'участников');
+    });
+    if (t.voteUrl !== qrUrl) {
+      qrUrl = t.voteUrl;
+      $('qr').src = SV.qrDataUrl(qrUrl);
+      $('url').textContent = qrUrl.replace(/^https?:\/\//, '');
+    }
+    if (t.mode !== serverMode) { serverMode = t.mode; localMode = null; }
+    applyMode();
+  }
+
+  function applyMode() {
+    var m = localMode || serverMode;
+    if (m === shownMode) { if (m === 'results') renderResults(false); return; }
+    shownMode = m;
+    document.body.classList.toggle('mode-results', m === 'results');
+    if (m === 'results') renderResults(true);
+    else { revealTok++; layout(); }
+  }
+
+  function renderResults(reveal) {
+    if (!last) return;
+    var s = last, t = s.teams[T];
+    var ranked = SV.ranked(s.values, t.counts).filter(function (x) { return x.count > 0; });
+    var top = ranked.slice(0, PICKS);
+    var key = JSON.stringify(top) + t.voters;
+    if (!reveal && key === renderResults._key) return;
+    renderResults._key = key;
+    var tok = ++revealTok;
+    $('rsub').textContent = t.name + ' · выбор ' + t.voters + ' ' + SV.plural(t.voters, 'участника', 'участников', 'участников');
+    var cards = $('cards'), formula = $('formula');
+    cards.innerHTML = ''; formula.innerHTML = ''; $('tie').textContent = '';
+    formula.classList.toggle('in', !reveal);
+    if (!top.length) {
+      cards.innerHTML = '<div class="empty" style="text-align:center">Пока нет голосов</div>';
+      return;
+    }
+    var cardEls = top.map(function (x, i) {
+      var pct = t.voters ? Math.round((x.count / t.voters) * 100) : 0;
+      var c = document.createElement('div');
+      c.className = 'card' + (i === 0 ? ' first' : '') + (reveal ? ' pre' : '');
+      c.innerHTML = '<div class="medal">' + (i + 1) + '</div><div class="cname"></div>' +
+        '<div class="cbar"><div class="cfill"></div></div><div class="cval"><b>' + x.count + '</b><span></span></div>';
+      c.querySelector('.cname').textContent = x.name;
+      c.querySelector('.cval span').textContent = pct + '% участников';
+      c._pct = pct;
+      if (!reveal) c.querySelector('.cfill').style.width = pct + '%';
+      cards.appendChild(c);
+      return c;
+    });
+    top.forEach(function (x, i) {
+      if (i) formula.insertAdjacentHTML('beforeend', '<span class="op">+</span>');
+      var ch = document.createElement('span');
+      ch.className = 'fchip'; ch.textContent = x.name;
+      formula.appendChild(ch);
+    });
+    formula.insertAdjacentHTML('beforeend', '<span class="op">=</span>');
+    var res = document.createElement('span');
+    res.className = 'fres'; res.textContent = s.formulaResult || '';
+    formula.appendChild(res);
+    if (top.length === PICKS && ranked.length > PICKS) {
+      var edge = top[PICKS - 1].count;
+      var tied = ranked.slice(PICKS).filter(function (x) { return x.count === edge; }).map(function (x) { return x.name; });
+      if (tied.length) $('tie').textContent = 'Столько же голосов (' + edge + '), как у ' + PICKS + '-го места: ' + tied.join(', ');
+    }
+    if (!reveal) return;
+    // Раскрываем места с последнего к первому
+    var order = cardEls.slice().reverse(), k = 0;
+    function next() {
+      if (tok !== revealTok) return;
+      if (k < order.length) {
+        var c = order[k++];
+        c.classList.remove('pre');
+        c.querySelector('.cfill').style.width = c._pct + '%';
+        setTimeout(next, k === order.length ? 1200 : 900);
+      } else {
+        formula.classList.add('in');
+        SV.confetti($('confetti'), ['#ffcc40', last.teams[T].color, last.teams[T].accent, '#ffffff', '#ff6fb5'], 6000);
+      }
+    }
+    setTimeout(next, 500);
+  }
+
+  function hint(text) {
+    var h = $('hint');
+    h.textContent = text; h.classList.add('show');
+    clearTimeout(hint._t); hint._t = setTimeout(function () { h.classList.remove('show'); }, 1600);
+  }
+  function toggleLocal(m) {
+    localMode = m === serverMode ? null : m;
+    applyMode();
+    hint(m === 'results' ? 'Показываю итоги' : 'Показываю голосование');
+  }
+
+  // Удержание бейджа территории 1,5 сек — переключить экран (на случай, если пульт недоступен)
+  var lp = null, badge = $('badge');
+  function lpStart(e) { lpEnd(); lp = setTimeout(function () { lp = null; toggleLocal((localMode || serverMode) === 'results' ? 'voting' : 'results'); }, 1500); }
+  function lpEnd() { if (lp) { clearTimeout(lp); lp = null; } }
+  badge.addEventListener('pointerdown', lpStart);
+  ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { badge.addEventListener(ev, lpEnd); });
+  badge.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+
+  document.addEventListener('keydown', function (e) {
+    var k = e.key.toLowerCase();
+    if (k === 'r' || k === 'к') toggleLocal('results');
+    else if (k === 'v' || k === 'м') toggleLocal('voting');
+    else if (k === 'f' || k === 'а') SV.fullscreen();
+  });
+  $('fsbtn').addEventListener('click', SV.fullscreen);
+
+  SV.fitRoot(layout);
+  if (window.ResizeObserver) new ResizeObserver(function () { layout(); }).observe(chart);
+  $('qr').addEventListener('load', layout);
+  SV.wakeLock();
+  SV.live(render, function (ok) { document.body.classList.toggle('offline', !ok); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>А и Б — формула школы</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ctext y=%22.9em%22 font-size=%2290%22%3E🗳%3C/text%3E%3C/svg%3E">
+<style>
+  :root { --gold: 255,204,64; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+  body { background: linear-gradient(160deg, #070b20, #0b1133 55%, #060918); color: #eef3ff;
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-user-select: none; user-select: none; }
+  #app { height: 100%; display: flex; flex-direction: column; padding: 1.6rem 2.4rem; }
+  .head { text-align: center; }
+  .head .l { font-size: 1.2rem; letter-spacing: .35em; text-transform: uppercase; color: rgb(var(--gold)); font-weight: 900; }
+  .head h1 { font-size: 3.2rem; font-weight: 900; line-height: 1.1; }
+  .cols { flex: 1; display: grid; grid-template-columns: 1fr 1fr; grid-gap: 2.4rem; margin-top: 1.4rem; min-height: 0; }
+  .col { border-radius: 1.6rem; padding: 1.3rem 1.6rem; display: flex; flex-direction: column; }
+  .ch { display: flex; align-items: center; justify-content: space-between; margin-bottom: .8rem; }
+  .ch .n { font-size: 2.2rem; font-weight: 900; text-transform: uppercase; }
+  .ch .v { text-align: right; } .ch .v b { font-size: 2.6rem; font-weight: 900; display: block; line-height: 1; } .ch .v span { font-size: .95rem; opacity: .75; }
+  .it { display: flex; align-items: center; background: rgba(255,255,255,.08); border-radius: 1rem; padding: .55rem .9rem; margin: .4rem 0;
+    border: .14rem solid transparent; animation: in .6s both; }
+  .it .m { width: 2.8rem; height: 2.8rem; border-radius: 50%; background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1.4rem; flex: none; }
+  .it .t { flex: 1; font-size: 2rem; font-weight: 900; padding: 0 1rem; }
+  .it .c { font-size: 2rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+  .it.same { border-color: rgb(var(--gold)); box-shadow: 0 0 1.4rem rgba(var(--gold), .35); }
+  .it.same .t:after { content: " ★"; color: rgb(var(--gold)); }
+  .it:first-of-type .m { background: rgb(var(--gold)); color: #2a1d00; }
+  .empty { opacity: .6; font-size: 1.6rem; margin-top: 1rem; }
+  .foot { margin-top: 1.2rem; text-align: center; }
+  .foot .k { font-size: 1.2rem; letter-spacing: .25em; text-transform: uppercase; opacity: .75; font-weight: 800; }
+  .formula { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: .5rem; font-size: 1.7rem; font-weight: 900; }
+  .fchip { background: #fff; color: #0b1133; border-radius: .8rem; padding: .3rem .9rem; margin: .3rem; }
+  .op { color: rgb(var(--gold)); font-size: 2rem; margin: 0 .25rem; }
+  .same-l { margin-top: .6rem; font-size: 1.3rem; color: rgb(var(--gold)); font-weight: 800; }
+  .fsbtn { position: fixed; right: .8rem; bottom: .8rem; width: 2.8rem; height: 2.8rem; border-radius: .8rem; border: 0; background: rgba(255,255,255,.08); color: rgba(255,255,255,.5); font-size: 1.5rem; }
+  @keyframes in { from { opacity: 0; transform: translateY(1rem); } to { opacity: 1; transform: none; } }
+  @media (orientation: portrait) { .cols { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="head"><div class="l">Итоги голосования</div><h1 id="h1">Формула школы</h1></div>
+  <div class="cols" id="cols"></div>
+  <div class="foot">
+    <div class="k">Общая формула школы</div>
+    <div class="formula" id="formula"></div>
+    <div class="same-l" id="same"></div>
+  </div>
+</div>
+<button class="fsbtn" onclick="SV.fullscreen()">⛶</button>
+<script src="../assets/qrcode.js"></script>
+<script src="../assets/config.js"></script>
+<script src="../assets/api.js"></script>
+<script src="../assets/live.js"></script>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var lastKey = '';
+  function render(s) {
+    var tops = {}, P = s.picks;
+    s.order.forEach(function (t) {
+      tops[t] = SV.ranked(s.values, s.teams[t].counts).filter(function (x) { return x.count > 0; }).slice(0, P);
+    });
+    var key = JSON.stringify(tops) + s.order.map(function (t) { return s.teams[t].voters; }).join();
+    if (key === lastKey) return;
+    lastKey = key;
+    $('h1').textContent = s.order.map(function (t) { return s.teams[t].letter; }).join(' и ') + ': формула школы';
+    var names = s.order.map(function (t) { return tops[t].map(function (x) { return x.name; }); });
+    var same = names[0].filter(function (n) { return names.every(function (l) { return l.indexOf(n) >= 0; }); });
+    var cols = $('cols'); cols.innerHTML = '';
+    s.order.forEach(function (t) {
+      var info = s.teams[t];
+      var col = document.createElement('div');
+      col.className = 'col';
+      col.style.background = 'linear-gradient(180deg, ' + info.color + 'cc, ' + info.color + '33)';
+      col.innerHTML = '<div class="ch"><div class="n"></div><div class="v"><b>' + info.voters + '</b><span>' +
+        SV.plural(info.voters, 'участник', 'участника', 'участников') + '</span></div></div>';
+      col.querySelector('.n').textContent = info.name;
+      if (!tops[t].length) col.insertAdjacentHTML('beforeend', '<div class="empty">Пока нет голосов</div>');
+      tops[t].forEach(function (x, i) {
+        var it = document.createElement('div');
+        it.className = 'it' + (same.indexOf(x.name) >= 0 ? ' same' : '');
+        it.style.animationDelay = (i * 0.12) + 's';
+        it.innerHTML = '<div class="m">' + (i + 1) + '</div><div class="t"></div><div class="c">' + x.count + '</div>';
+        it.querySelector('.t').textContent = x.name;
+        col.appendChild(it);
+      });
+      cols.appendChild(col);
+    });
+    // общая формула: сумма голосов обеих территорий
+    var sum = {};
+    s.values.forEach(function (v) { sum[v] = 0; s.order.forEach(function (t) { sum[v] += s.teams[t].counts[v] || 0; }); });
+    var all = SV.ranked(s.values, sum).filter(function (x) { return x.count > 0; }).slice(0, P);
+    var f = $('formula'); f.innerHTML = '';
+    all.forEach(function (x, i) {
+      if (i) f.insertAdjacentHTML('beforeend', '<span class="op">+</span>');
+      var c = document.createElement('span'); c.className = 'fchip'; c.textContent = x.name; f.appendChild(c);
+    });
+    $('same').textContent = same.length ? '★ Совпало у обеих территорий: ' + same.join(', ') : '';
+  }
+  SV.fitRoot();
+  SV.wakeLock();
+  SV.live(render);
+})();
+</script>
+</body>
+</html>

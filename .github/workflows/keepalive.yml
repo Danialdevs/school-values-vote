@@ -1,0 +1,26 @@
+# Бесплатный Supabase «засыпает» после 7 дней без запросов.
+# Этот workflow раз в 3 дня обращается к базе, чтобы голосование всегда было доступно.
+name: keep-database-awake
+
+on:
+  schedule:
+    - cron: '17 3 */3 * *'
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Ping Supabase
+        run: |
+          read URL KEY < <(node -e "global.window={};eval(require('fs').readFileSync('docs/assets/config.js','utf8'));console.log(window.SV_CFG.url, window.SV_CFG.key)")
+          curl -fsS -X POST "$URL/rest/v1/rpc/sv_public" -H "apikey: $KEY" -H "Content-Type: application/json" -d '{}' -o /dev/null -w "HTTP %{http_code}\n"
+      - name: Keep this workflow enabled (GitHub отключает расписание после 60 дней без коммитов)
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/keepalive.yml/enable" || true
+        env:
+          GH_TOKEN: ${{ github.token }}
